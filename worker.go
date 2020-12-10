@@ -274,8 +274,8 @@ func(w *Worker)acceptTcpConnection(conn net.Conn)(connection Connection){
 
 	connection = &tcp{
 		conn: conn,
-		defaultMaxBuffer: w.MaxBufferSize,
-		defaultMaxPageSize: w.MaxPacketSize,
+		MaxBuffer: w.MaxBufferSize,
+		MaxPageSize: w.MaxPacketSize,
 		name:"tcp-server",
 		onConnStart: w.OnConnStart,
 		onConnStop: w.OnConnStop,
