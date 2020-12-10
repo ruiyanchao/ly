@@ -32,6 +32,7 @@ func main(){
 type MyProtocol struct {
 	name string
 }
+
 func (mp *MyProtocol)Input(buf []byte)( l int){
 	request := string(buf)
 	pos:= strings.Index(request,"\n")
@@ -41,11 +42,11 @@ func (mp *MyProtocol)Input(buf []byte)( l int){
 	return pos+1
 }
 
-func (mp *MyProtocol)Encode(buf []byte){
+func (mp *MyProtocol)Encode(data string){
 	return
 }
 
-func (mp *MyProtocol)Decode(data string){
+func (mp *MyProtocol)Decode(buf []byte){
 	return
 }
 

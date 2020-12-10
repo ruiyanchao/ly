@@ -1,3 +1,5 @@
+// worker pool 只在 fasthttp workerpool.go 文件的基础上稍做修改
+// 我写不来 https://github.com/valyala/fasthttp
 package LY
 
 import (
@@ -12,30 +14,34 @@ type Logger interface {
 type ServeHandler func(con Connection,msg interface{})
 
 type workerPool struct {
-
+    // 处理方法
 	WorkerFunc ServeHandler
-
+    // 最大协程数
 	MaxWorkersCount int
-
+    // 是否日志所有错误
 	LogAllErrors bool
-
+    // 超时时间
 	MaxIdleWorkerDuration time.Duration
-
+    // 日志
 	Logger Logger
-
+    // 锁
 	lock         sync.Mutex
+	// 协程数
 	workersCount int
+	// 是否停止
 	mustStop     bool
-
+    // 闲置协程通道
 	ready []*workerChan
-
+    //关闭通道
 	stopCh chan struct{}
-
+    //减少内存开销
 	workerChanPool sync.Pool
 }
 
 type ConnChan struct {
+	//连接
 	connection Connection
+	//信息
 	msg interface{}
 }
 
