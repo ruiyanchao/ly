@@ -1,4 +1,4 @@
-package LY
+package ly
 
 type Connection interface {
 	Read() (msg []interface{},err error)  // 读取信息

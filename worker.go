@@ -1,4 +1,4 @@
-package LY
+package ly
 
 import (
 	"fmt"

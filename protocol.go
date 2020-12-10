@@ -1,4 +1,4 @@
-package LY
+package ly
 
 type protocol interface {
 	GetName()string  // 获取协议名称

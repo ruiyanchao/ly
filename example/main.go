@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	"strings"
-	"LY"
+	"ly"
 )
 
 func main(){
-	w := LY.Worker{
+	w := ly.Worker{
 		SocketName:"tcp://127.0.0.1:8080",
 		Protocol: &MyProtocol{
 			name:"rick",

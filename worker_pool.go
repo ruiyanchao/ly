@@ -1,6 +1,6 @@
 // worker pool 只在 fasthttp workerpool.go 文件的基础上稍做修改
 // 我写不来 https://github.com/valyala/fasthttp
-package LY
+package ly
 
 import (
 	"runtime"
