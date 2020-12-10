@@ -13,15 +13,15 @@ func main(){
 			name:"rick",
 		},
 	}
-	w.OnMessage = func(con LY.Connection,msg interface{}) {
+	w.OnMessage = func(con ly.Connection,msg interface{}) {
 		fmt.Println(msg)
 		con.Write("hello client")
 	}
-	w.OnConnStart = func(con LY.Connection) {
+	w.OnConnStart = func(con ly.Connection) {
 		cid := con.GetConnID()
 		fmt.Printf("get client [%d] \n",cid)
 	}
-	w.OnConnStop = func(con LY.Connection) {
+	w.OnConnStop = func(con ly.Connection) {
 		cid := con.GetConnID()
 		fmt.Printf("client [%d] leave \n",cid)
 	}
