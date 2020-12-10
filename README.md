@@ -35,6 +35,14 @@ func (mp *MyProtocol)GetName() string{
 ```
 2.配置对应闭包，启动服务
 ```go
+package main 
+
+import (
+	"fmt"
+	"strings"
+	"github.com/ruiyanchao/ly"
+)
+
 func main(){
     // 初始化worker
 	w := LY.Worker{

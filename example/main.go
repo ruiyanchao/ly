@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
-	"ly"
+	"github.com/ruiyanchao/ly"
 )
 
 func main(){
