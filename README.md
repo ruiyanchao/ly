@@ -45,24 +45,24 @@ import (
 
 func main(){
     // 初始化worker
-	w := LY.Worker{
+	w := ly.Worker{
 		SocketName:"tcp://127.0.0.1:8080",
 		Protocol: &MyProtocol{
 			name:"rick",
 		},
 	}
    // 定义消息获取处理方法
-	w.OnMessage = func(con LY.Connection,msg interface{}) {
+	w.OnMessage = func(con ly.Connection,msg interface{}) {
 		fmt.Println(msg)
 		con.Write("hello client")
 	}
    // 定义连接开始
-	w.OnConnStart = func(con LY.Connection) {
+	w.OnConnStart = func(con ly.Connection) {
 		cid := con.GetConnID()
 		fmt.Printf("get client [%d] \n",cid)
 	}
    // 定义连接结束
-	w.OnConnStop = func(con LY.Connection) {
+	w.OnConnStop = func(con ly.Connection) {
 		cid := con.GetConnID()
 		fmt.Printf("client [%d] leave \n",cid)
 	}
