@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"net"
-	)
+	"time"
+)
 
 func main() {
 
@@ -13,6 +14,7 @@ func main() {
 		return
 	}
 	for{
+		time.Sleep(1*time.Second)
 		_,err:=conn.Write([]byte("Hello server\n"))
 		if err != nil{
 			fmt.Println("服务器已断开")

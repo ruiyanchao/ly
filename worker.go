@@ -63,6 +63,8 @@ type Worker struct {
 	MaxPacketSize int
 	// 包的最大大小
 	MaxBufferSize int
+	// 信息
+	Statistics map[string]interface{}
 }
 
 /**
@@ -126,6 +128,13 @@ func(w *Worker)addConn(cid int,connection Connection){
  */
 func(w *Worker)delConn(cid int){
 	w.Lock()
+	pro := w.connections[cid].GetProperty()
+	w.Statistics["send"] = pro["send"]
+	if _,ok:=w.Statistics["connections"];ok{
+		w.Statistics["connections"] = w.Statistics["connections"].(int) + 1
+	}else{
+		w.Statistics["connections"] = 1
+	}
 	delete(w.connections, cid)
 	w.Unlock()
 }
@@ -173,6 +182,8 @@ func(w *Worker)initWorker(){
 	w.stopChan = make(chan os.Signal)
 	// 初始化运行状态
 	w.status = RUNNING
+	// 初始化监控
+	w.Statistics = make(map[string]interface{})
 	// 初始化cid
 	w.cid = 0
 	// 初始化 连接管理
@@ -265,6 +276,7 @@ func(w *Worker)connHandler(conn net.Conn){
 		}
 
 	}
+	w.delConn(ac.GetConnID())
 	ac.OnConnStop()
 }
 /**
@@ -298,6 +310,21 @@ func (w *Worker)monitorWorker(server net.Listener){
 		fmt.Print("\n")
 		fmt.Println("get stop command. now stopping...")
 		fmt.Printf("[STOP] Server name: %s,socket name : %s is stopped \n",w.Name,w.SocketName)
+		send:=0
+		connections := len(w.connections)
+		for _,v:=range w.connections{
+			p:=v.GetProperty()
+			if _,ok := p["send"];ok{
+				send =send + p["send"].(int)
+			}
+		}
+		if _,ok:= w.Statistics["send"];ok{
+			send  = send + w.Statistics["send"].(int)
+		}
+		if _,ok:= w.Statistics["connections"];ok{
+			connections  = connections + w.Statistics["connections"].(int)
+		}
+		fmt.Printf("[LY] Totol connection nums : %d,Totol send : %d  \n",connections,send)
 		if err := server.Close(); err != nil {
 			fmt.Println("close listen err",err)
 		}

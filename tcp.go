@@ -83,6 +83,7 @@ func (tc *tcp)Read()(msg []interface{} , err error){
  *发送
  */
 func (tc *tcp)Write(data string){
+	tc.setProperty("send","incr")
 	tc.conn.Write([]byte(data))
 }
 
@@ -144,6 +145,24 @@ func (tc *tcp)SetOnConnStop(function func(connection Connection)){
  */
 func(tc *tcp)GetConnID() int{
 	return tc.connID
+}
+
+/**
+ * 设置发送
+ */
+func(tc *tcp)setProperty(key string,value string){
+	tc.Lock()
+	if value == "incr"{
+		if _,ok := tc.property[key];ok{
+			tc.property[key] = tc.property[key].(int) + 1
+		}else{
+			tc.property[key] = 1
+		}
+	}else{
+		tc.property[key] = value
+	}
+
+	tc.Unlock()
 }
 
 
