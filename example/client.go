@@ -13,8 +13,9 @@ func main() {
 		fmt.Println("conn err",err)
 		return
 	}
+	i := 0
 	for{
-		time.Sleep(1*time.Second)
+		time.Sleep(500*time.Microsecond)
 		_,err:=conn.Write([]byte("Hello server\n"))
 		if err != nil{
 			fmt.Println("服务器已断开")
@@ -22,7 +23,12 @@ func main() {
 		}
 		buffer := make([]byte, 512)
 		n, _ := conn.Read(buffer)
-		fmt.Println(string(buffer[:n]))
+		if n > 0{
+			i++
+			fmt.Printf("第 %d 次发送 \n" ,i)
+		}
+
+		//fmt.Println(string(buffer[:n]))
 	}
 
 

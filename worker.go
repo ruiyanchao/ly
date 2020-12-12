@@ -1,6 +1,7 @@
 package ly
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -65,6 +66,9 @@ type Worker struct {
 	MaxBufferSize int
 	// 信息
 	Statistics map[string]interface{}
+	// 连接关闭告知
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 /**
@@ -129,12 +133,17 @@ func(w *Worker)addConn(cid int,connection Connection){
 func(w *Worker)delConn(cid int){
 	w.Lock()
 	pro := w.connections[cid].GetProperty()
-	w.Statistics["send"] = pro["send"]
-	if _,ok:=w.Statistics["connections"];ok{
-		w.Statistics["connections"] = w.Statistics["connections"].(int) + 1
-	}else{
-		w.Statistics["connections"] = 1
+	if _,ok := pro["send"];!ok{
+		pro["send"] = 0
 	}
+	if _,ok := w.Statistics["send"];!ok{
+		w.Statistics["send"] = 0
+	}
+	if _,ok := w.Statistics["connections"];!ok{
+		w.Statistics["connections"] = 0
+	}
+	w.Statistics["connections"] = w.Statistics["connections"].(int) + 1
+	w.Statistics["send"] = w.Statistics["send"].(int) + pro["send"].(int)
 	delete(w.connections, cid)
 	w.Unlock()
 }
@@ -207,6 +216,7 @@ func(w *Worker)run(){
 	snSplit := strings.Split(w.SocketName, "://")
 	pro := snSplit[0]
 	fmt.Printf("[START] Server name: %s,socket name : %s is starting \n",w.Name,w.SocketName)
+	w.ctx, w.cancel = context.WithCancel(context.Background())
 	//TODO 添加 UDP UNIX
 	switch pro{
 	case "tcp":
@@ -242,10 +252,14 @@ func(w *Worker)listenTcp(address string){
 			fmt.Println("accept err")
 			continue
 		}
-		// 链接超出 将关闭
+		// 链接超出 或 已经进入关闭状态 将不在新增链接
 		if w.currentConn >= w.MaxConn{
 			conn.Close()
 			fmt.Println("connection too much")
+			continue
+		}
+		if w.status == CLOSE{
+			conn.Close()
 			continue
 		}
 		// 接收信息
@@ -265,19 +279,24 @@ func(w *Worker)connHandler(conn net.Conn){
 	ac.OnConnStart()
 	defer ac.Close()
 	for {
-		//读取消息
-		msg,err := ac.Read()
-		if err != nil{
-			break
+		select {
+		case <-w.ctx.Done():
+			w.delConn(ac.GetConnID())
+			ac.OnConnStop()
+			return
+		default:
+			//读取消息
+			msg,err := ac.Read()
+			if err != nil{
+				return
+			}
+			//将消息投入协程池处理
+			for _,v :=range msg{
+				w.workerPool.Serve(ac,v)
+			}
 		}
-		//将消息投入协程池处理
-		for _,v :=range msg{
-			w.workerPool.Serve(ac,v)
-		}
-
 	}
-	w.delConn(ac.GetConnID())
-	ac.OnConnStop()
+
 }
 /**
  * 初始化top链接
@@ -299,8 +318,9 @@ func(w *Worker)acceptTcpConnection(conn net.Conn)(connection Connection){
 	return
 }
 
+
 /**
- * 监听信息
+ * 监听进程
  */
 func (w *Worker)monitorWorker(server net.Listener){
 	signal.Notify(w.stopChan, os.Interrupt)
@@ -310,21 +330,24 @@ func (w *Worker)monitorWorker(server net.Listener){
 		fmt.Print("\n")
 		fmt.Println("get stop command. now stopping...")
 		fmt.Printf("[STOP] Server name: %s,socket name : %s is stopped \n",w.Name,w.SocketName)
-		send:=0
-		connections := len(w.connections)
-		for _,v:=range w.connections{
-			p:=v.GetProperty()
-			if _,ok := p["send"];ok{
-				send =send + p["send"].(int)
+		w.cancel()
+		send := 0
+		connections := 0
+		for{
+			now := len(w.connections)
+			time.Sleep(1*time.Second)
+			if now == 0{
+				break
 			}
 		}
 		if _,ok:= w.Statistics["send"];ok{
-			send  = send + w.Statistics["send"].(int)
+			send  =  w.Statistics["send"].(int)
 		}
 		if _,ok:= w.Statistics["connections"];ok{
-			connections  = connections + w.Statistics["connections"].(int)
+			connections  = w.Statistics["connections"].(int)
 		}
 		fmt.Printf("[LY] Totol connection nums : %d,Totol send : %d  \n",connections,send)
+
 		if err := server.Close(); err != nil {
 			fmt.Println("close listen err",err)
 		}
