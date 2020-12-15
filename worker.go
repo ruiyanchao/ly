@@ -217,8 +217,10 @@ func(w *Worker)run(){
 	pro := snSplit[0]
 	fmt.Printf("[START] Server name: %s,socket name : %s is starting \n",w.Name,w.SocketName)
 	w.ctx, w.cancel = context.WithCancel(context.Background())
-	//TODO 添加 UDP UNIX
+	//TODO 添加 UNIX
 	switch pro{
+	case "udp":
+		w.listenUdp(snSplit[1])
 	case "tcp":
 		// 监听tcp
 		w.listenTcp(snSplit[1])
@@ -267,6 +269,93 @@ func(w *Worker)listenTcp(address string){
 	}
 }
 
+func (w *Worker) listenUdp(address string){
+	udpAddr, err := net.ResolveUDPAddr("udp4", address)
+	if err != nil{
+		fmt.Println("udp addr err")
+		return
+	}
+	//监听端口
+	conn, err := net.ListenUDP("udp", udpAddr)
+	if err != nil{
+		fmt.Println("udp conn err")
+		return
+	}
+	w.monitorWorker(nil)
+	go w.connUdpHandler(conn)
+	for{
+		select {
+		case <-w.ctx.Done():
+			return
+		default:
+		}
+	}
+
+}
+
+func (w *Worker)acceptUdpConnection(conn *net.UDPConn)(connection Connection){
+	connection = &udp{
+		name:"udp-server",
+		conn: conn,
+		onConnStart: w.OnConnStart,
+		onConnStop: w.OnConnStop,
+		connID:w.getCID(),
+		protocol: w.Protocol,
+		property:make(map[string]interface{}),
+	}
+	return
+}
+
+func(w *Worker)connUdpHandler(conn *net.UDPConn){
+	for{
+		currentBuf := make([]byte,w.MaxBufferSize )
+		n, err := conn.Read(currentBuf)
+		if err != nil{
+			fmt.Println("udp read err")
+			break
+		}
+		ac := w.acceptTcpConnection(conn)
+		w.addConn(ac.GetConnID(),ac)
+		//连接触发方法
+		ac.OnConnStart()
+		currentBuf = currentBuf[:n]
+		oneRequestBuf := make([]byte,len(currentBuf) )
+		if w.Protocol != nil{
+			for{
+				if string(currentBuf) == ""{
+					break
+				}
+				currentBufLen := w.Protocol.Input(currentBuf)
+				if currentBufLen == 0{
+					break
+				}else if currentBufLen > 0 && currentBufLen <= w.MaxPacketSize{
+					if currentBufLen > len(currentBuf){
+						break
+					}
+				}
+				if len(currentBuf) == currentBufLen{
+					oneRequestBuf = currentBuf
+					currentBuf = []byte("")
+				}else{
+					oneRequestBuf = currentBuf[:currentBufLen]
+					currentBuf  = currentBuf[currentBufLen:]
+				}
+				currentBufLen = 0
+
+				w.workerPool.Serve(ac , w.Protocol.Decode(oneRequestBuf))
+
+			}
+		}else{
+			w.workerPool.Serve(ac,string(currentBuf))
+		}
+		w.delConn(ac.GetConnID())
+		ac.OnConnStop()
+		ac.Close()
+	}
+
+}
+
+
 /**
  * 处理链接
  */
@@ -299,7 +388,7 @@ func(w *Worker)connHandler(conn net.Conn){
 
 }
 /**
- * 初始化top链接
+ * 初始化tcp链接
  */
 func(w *Worker)acceptTcpConnection(conn net.Conn)(connection Connection){
 
@@ -330,7 +419,10 @@ func (w *Worker)monitorWorker(server net.Listener){
 		fmt.Print("\n")
 		fmt.Println("get stop command. now stopping...")
 		fmt.Printf("[STOP] Server name: %s,socket name : %s is stopped \n",w.Name,w.SocketName)
-		w.cancel()
+		if server != nil{
+			w.cancel()
+		}
+
 		send := 0
 		connections := 0
 		for{
@@ -348,6 +440,10 @@ func (w *Worker)monitorWorker(server net.Listener){
 		}
 		fmt.Printf("[LY] Totol connection nums : %d,Totol send : %d  \n",connections,send)
 
+		if server == nil{
+			w.cancel()
+			return
+		}
 		if err := server.Close(); err != nil {
 			fmt.Println("close listen err",err)
 		}

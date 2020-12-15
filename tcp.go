@@ -40,13 +40,14 @@ func (tc *tcp)Read()(msg []interface{} , err error){
 	tc.currentBuf = make([]byte,tc.MaxBuffer )
 	n, err :=tc.conn.Read(tc.currentBuf)
 	tc.currentBuf = tc.currentBuf[:n]
-	//初始化一条信息buff
-	oneRequestBuf := make([]byte,len(tc.currentBuf) )
+
 	if err != nil{
 		fmt.Println("read buf err",err)
 		return
 	}
 	if tc.protocol != nil{
+		//初始化一条信息buff
+		oneRequestBuf := make([]byte,len(tc.currentBuf) )
 		for{
 			//如果当前信息为空 跳出
 			if string(tc.currentBuf) == ""{
@@ -55,7 +56,7 @@ func (tc *tcp)Read()(msg []interface{} , err error){
 			// 通过协议解析 获取 当前一条buf长度
 			currentBufLen := tc.protocol.Input(tc.currentBuf)
 			if currentBufLen == 0{
-				return
+				break
 			}else if currentBufLen > 0 && currentBufLen <= tc.MaxPageSize{
 				if currentBufLen > len(tc.currentBuf){
 					break
@@ -71,10 +72,12 @@ func (tc *tcp)Read()(msg []interface{} , err error){
 			}
 			currentBufLen = 0
 			//防止粘包
-			msg = append(msg,string(oneRequestBuf))
+			msg = append(msg,tc.protocol.Decode(oneRequestBuf))
 
 		}
 
+	}else{
+		msg = append(msg,string(tc.currentBuf))
 	}
 	return
 }
@@ -84,7 +87,12 @@ func (tc *tcp)Read()(msg []interface{} , err error){
  */
 func (tc *tcp)Write(data string){
 	tc.setProperty("send","incr")
-	tc.conn.Write([]byte(data))
+	if tc.protocol != nil{
+		tc.conn.Write([]byte(tc.protocol.Encode(data)))
+	}else{
+		tc.conn.Write([]byte(data))
+	}
+
 }
 
 /**
