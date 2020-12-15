@@ -8,7 +8,7 @@ import (
 
 func main(){
 	w := ly.Worker{
-		SocketName:"tcp://127.0.0.1:8080",
+		SocketName:"udp://127.0.0.1:8080",
 		Protocol: &MyProtocol{
 			name:"rick",
 		},
@@ -42,12 +42,12 @@ func (mp *MyProtocol)Input(buf []byte)( l int){
 	return pos+1
 }
 
-func (mp *MyProtocol)Encode(data string){
-	return
+func (mp *MyProtocol)Encode(data string) string {
+	return data
 }
 
-func (mp *MyProtocol)Decode(buf []byte){
-	return
+func (mp *MyProtocol)Decode(buf []byte) interface{}{
+	return string(buf)
 }
 
 func (mp *MyProtocol)GetName() string{
